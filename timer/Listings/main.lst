@@ -1,0 +1,564 @@
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.2.7.0
+OBJECT MODULE PLACED IN .\Objects\main.obj
+ASSEMBLER INVOKED BY: C:\Keil_v5\C51\BIN\A51.EXE main.asm SET(SMALL) DEBUG PRINT(.\Listings\main.lst) OBJECT(.\Objects\m
+                      ain.obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+  REG                  1     GIO EQU R0 ; Khai bao thanh ghi chua gia tri gio
+  REG                  2     PHUT EQU R1 ; khai bao thanh ghi chua gia tri phut
+  REG                  3     GIAY EQU R2; khai bao thanh ghi chua gia tri giay
+  0030                 4     CHUC EQU 30H; bien chuc
+  0031                 5     DONVI EQU 31H; bien don vi
+  REG                  6     MODE EQU R3; bien luu che do
+                       7             
+  00B7                 8     SDA BIT P3.7; khai bao chan SDA ket noi IC DS1307
+  00B6                 9     SCL BIT p3.6; khai bao chan SDA ket noi IC DS1307
+                      10             
+  0032                11     HTCHINHGIO EQU 32H; khai bao bien hien thi dau 2 cham chinh gio
+  0033                12     HTCHINHPHUT EQU 33H; khai bao bien hien thi dau 2 cham chinh phut
+                      13             
+0000                  14     ORG 0000h; bat dau chuong trinh
+0000 020040           15             LJMP MAIN; nhay toi ham MAIN
+                      16             
+0008                  17     ORG 0008H; vector ngat timer0
+0008 11D5             18     CALL DEMTHOIGIAN; goi ham doc thoi gian va chuyen doi BCD sang thap phan 
+000A 32               19     RETI
+                      20     
+0010                  21     ORG 0010h; vector ngat timer1
+0010 11E2             22     CALL QUETLED; goi ham quet LED
+0012 32               23     RETI
+                      24     
+                      25     
+0040                  26     ORG 0040H; vung nho bat dau ham main
+0040                  27     MAIN:
+0040 7580FF           28                     MOV P0, #0FFh ; dat du lieu P0 ve FF
+0043 759000           29                     MOV P1, #0 ; dat du lieu P1 ve 0
+0046 75A0FF           30                     MOV P2, #0FFh; dat du lieu P2 ve FF
+0049 7B00             31                     MOV MODE, #0; mode ban dau la 0 hien thi gio binh thuong 
+                      32                     
+004B 5177             33             CALL            I2C_INIT; goi ham khoi tao chan I2C
+004D 31C8             34             CALL            DS1307_INIT; goi ham khoi tao chip DS1307
+                      35             
+004F 758911           36             MOV TMOD, #11h; dat timer 1 va timer 0 che do 16 bit
+0052 C28F             37                     CLR TF1; xoa co ngat timer 1
+0054 D2AB             38                     SETB ET1; cho phep ngat timer 1
+0056 758D3F           39                     MOV TH1,#3FH; gan truoc gia tri TH1
+0059 758B00           40                     MOV TL1, #0; gan truoc gia tri TL1
+                      41                     
+005C C28D             42                     CLR TF0; xoa co ngat timer 0
+005E D2A9             43                     SETB ET0; cho phep ngat timer 0
+0060 758C1C           44                     MOV TH0, #1CH ; gan truoc gia tri TH0
+0063 758AB0           45                     MOV TL0, #0B0H;; gan truoc gia tri TL0 (chu y)
+0066 D28E             46                     SETB TR1; khoi dong timer 1
+0068 D28C             47                     SETB TR0; khoi dong timer 0
+006A D2AF             48                     SETB EA; cho phep ngat toan cuc
+                      49                     
+006C 7532FF           50             MOV HTCHINHGIO, #0FFH; tat dau cham gio
+006F 7533FF           51             MOV HTCHINHPHUT, #0FFH; tat dau cham phut
+                      52             
+0072                  53     LAP:
+0072 30902D           54                             JNB P1.0,KTTANG; kiem tra nut MODE
+0075 2090FD           55                             JB P1.0,$ ; neu co bam nut thi cho nha nut
+0078 0B               56                             INC MODE; chuyen mode
+0079 BB0306           57                             CJNE MODE, #3, KTMODE; neu mode 3 thi quay ve 0
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     2
+
+007C 7B00             58                             MOV MODE, #0; gan mode = 0
+007E 31B1             59                     CALL CHUYENDOITHAPPHANBCD; goi ham chuyen doi gio phut giay thap phan sang 
+                             BCD
+0080 31DC             60                     CALL DS1307_WRITE_TIME; ghi gia tri moi vao chip DS1307
+                      61     
+0082 BB000A           62     KTMODE: CJNE MODE, #0, DUNGDEM;  neu mode la khac 0(vao che do cai dat) thi nhay toi dung d
+                             em
+0085 D28C             63                                     SETB TR0; cho phep timer 0 hoat dong
+0087 7532FF           64                     MOV HTCHINHGIO, #0FFH; tat dau cham gio
+008A 7533FF           65                     MOV HTCHINHPHUT, #0FFH; tat dau cham phut
+008D 8013             66                     JMP KTTANG; ngay toi kiem tra nut tang
+008F                  67     DUNGDEM:
+008F C28C             68                     CLR TR0; mode khac 0 thi dung timer 0
+0091 BB0108           69                             CJNE MODE,#1,CHINHPHUT; kiem tra neu mode 1 thi vao che do chinh gio
+0094 75327F           70                     MOV HTCHINHGIO, #7FH; hien thi cham gio
+0097 7533FF           71                             MOV HTCHINHPHUT, #0FFH; tat hien thi cham phut
+009A 8006             72                     JMP KTTANG
+009C                  73     CHINHPHUT: ;neu mode = 2 thi vao che do chinh phut
+009C 75337F           74             MOV HTCHINHPHUT, #7FH; hien thi cham
+009F 7532FF           75                     MOV HTCHINHGIO, #0FFH; tat hien thi cham
+                      76                     
+00A2 309115           77     KTTANG: JNB P1.1, KTGIAM; neu nhan nut tang
+00A5 2091FD           78                                     JB P1.1, $; cho nha nut tang
+00A8 BB0106           79                                     CJNE MODE, #1, KTPHUT1; neu mode 1 thi tang gio
+00AB 08               80                                     INC GIO; tang gio
+00AC B81802           81                                     CJNE GIO, #24, KTPHUT1; neu gio bang 24 thi gan gio 0
+00AF 7800             82                                     MOV GIO, #0; gan gio = 0
+00B1 BB0206           83     KTPHUT1: CJNE MODE, #2, KTGIAM; neu che do cai dat phut
+00B4 09               84                             INC PHUT; tang phut
+00B5 B93C02           85                                     CJNE PHUT, #60, KTGIAM; bang 60 thi quay ve 00
+00B8 7900             86                                     MOV PHUT,#0
+00BA                  87     KTGIAM: 
+00BA 3092B5           88                     JNB P1.2, LAP; neu nhan nut giam
+00BD 2092FD           89                                     JB P1.2,$; cho nha nut giam
+00C0 BB0106           90                                     CJNE MODE, #1, KTPHUT2; neu mode 1 thi giam gio
+00C3 18               91                                     DEC GIO
+00C4 B8FF02           92                                     CJNE GIO, #255, KTPHUT2; neu gio bang 255 thi gio = 23
+00C7 7817             93                                     MOV GIO, #23
+00C9 BB02A6           94     KTPHUT2: CJNE MODE, #2, LAP; neu mode 2 thi giam phut
+00CC 19               95                             DEC PHUT
+00CD B9FFA2           96                                     CJNE PHUT, #255, LAP; neu phut = 255 thi phut bang 59
+00D0 793B             97                                     MOV PHUT, #59
+                      98                             
+00D2 020072           99             LJMP LAP
+                     100             
+00D5                 101     DEMTHOIGIAN: ; ham dem thoi gian
+00D5 C28C            102             CLR TR0; xoa co ngat timer 0
+00D7 758C1C          103                     MOV TH0, #1CH; gan lai gia tri timer 0
+00DA 758AB0          104                     MOV TL0, #0B0H
+00DD 31F2            105                     CALL DS1307_READ_TIME; goi ham doc chip DS1307
+00DF 3186            106             CALL CHUYENDOIBCDTHAPPHAN; goi ham chuyen doi BCD sang thap phan
+00E1 22              107     RET
+                     108     
+00E2                 109     QUETLED: ; ham quet LED
+00E2 C28E            110             CLR TR1; dung timer 1
+00E4 C28F            111                     CLR TF1; xoa co ngat
+00E6 758DBF          112                     MOV TH1, #0BFH; gan gia tri timer 1
+00E9 758B00          113                     MOV TL1, #0
+                     114                     
+00EC E8              115                     MOV A, GIO;     bat dau tach hang chuc va hang don vi cua gio
+00ED 75F00A          116                     MOV B, #10; gan 10 vao thanh ghi B
+00F0 84              117                     DIV AB; chia A cho B
+00F1 F530            118                     MOV CHUC, A; dua ket qua vao bien chuc
+00F3 85F031          119                     MOV DONVI, B; dua ket qua vao bien don vi
+00F6 9002C6          120                     MOV DPTR,#MALED; gan bang ma LED
+                     121                     
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     3
+
+00F9 E530            122                     MOV A, CHUC; dua hang chuc vao A de hien thi
+00FB 93              123                     MOVC A, @A+DPTR; lay ma hang chuc
+                     124                     
+00FC 5532            125             ANL A, HTCHINHGIO; hien thi dau cham neu dang vao che do chinh gio
+00FE F580            126                     MOV P0, A; dua ma led ra port 0
+0100 75A0FE          127                     MOV P2,#0FEh; dua chan P0.0 xuong thap de sang LED thu nha
+0103 51BD            128                     CALL DELAY      ; goi ham delay
+0105 75A0FF          129                     MOV P2, #0FFh; tat tat ca cac LED
+                     130                     
+0108 E531            131                     MOV A, DONVI; hien thi don vi
+010A 93              132                     MOVC A,@A+DPTR
+010B 5532            133             ANL A, HTCHINHGIO ; dau cham
+010D F580            134                     MOV P0, A
+010F 75A0FD          135                     MOV P2, #0FDh
+0112 51BD            136                     CALL DELAY
+0114 75A0FF          137                     MOV P2, #0FFh
+                     138                     
+                     139                     ; cac ham ben duoi tuong tu o tren cho phut va giay
+0117 740A            140                     MOV A, #10
+0119 93              141                     MOVC A,@A+DPTR
+011A F580            142                     MOV P0,A
+011C 75A0FB          143                     MOV P2, #0FBh
+011F 51BD            144                     CALL DELAY
+0121 75A0FF          145                     MOV P2, #0FFh
+                     146                     
+0124 E9              147                     MOV A, PHUT
+0125 75F00A          148                     MOV B, #10
+0128 84              149                     DIV AB
+0129 F530            150                     MOV CHUC, A
+012B 85F031          151                     MOV DONVI, B
+012E 9002C6          152                     MOV DPTR, #MALED
+                     153                     
+0131 E530            154                     MOV A, CHUC
+0133 93              155                     MOVC A, @A+DPTR
+0134 5533            156             ANL A, HTCHINHPHUT; dau cham
+0136 F580            157                     MOV P0, A
+0138 75A0F7          158                     MOV P2, #0F7h
+013B 51BD            159                     CALL DELAY
+013D 75A0FF          160                     MOV P2, #0FFh
+                     161                     
+0140 E531            162                     MOV A, DONVI
+0142 93              163                     MOVC A, @A+DPTR
+0143 5533            164             ANL A, HTCHINHPHUT; dau cham
+0145 F580            165                     MOV P0, A
+0147 75A0EF          166                     MOV P2, #0EFh
+014A 51BD            167                     CALL DELAY
+014C 75A0FF          168                     MOV P2, #0FFh
+                     169                     
+014F 740A            170                     MOV A, #10
+0151 93              171                     MOVC A, @A+DPTR
+0152 F580            172                     MOV P0, A
+0154 75A00F          173                     MOV P2, #00Fh
+0157 51BD            174                     CALL DELAY
+0159 75A0FF          175                     MOV P2, #0FFh
+                     176                     
+015C EA              177                     MOV A,GIAY
+015D 75F00A          178                     MOV B,# 10
+0160 84              179                     DIV AB
+0161 F530            180                     MOV CHUC, A
+0163 85F031          181                     MOV DONVI, B
+0166 9002C6          182                     MOV DPTR, #MALED
+                     183                     
+0169 E530            184                     MOV A, CHUC
+016B 93              185                     MOVC A, @A+DPTR
+016C F580            186                     MOV P0, A
+016E 75A0BF          187                     MOV P2, #0BFh
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     4
+
+0171 51BD            188                     CALL DELAY
+0173 75A0FF          189                     MOV P2, #0FFh
+                     190                     
+0176 E531            191                     MOV A, DONVI
+0178 93              192                     MOVC A, @A+DPTR
+0179 F580            193                     MOV P0, A
+017B 75A07F          194                     MOV P2, #07Fh
+017E 51BD            195                     CALL DELAY
+0180 75A0FF          196                     MOV P2, #0FFh
+                     197                     
+0183 D28E            198             SETB TR1 
+                     199             
+                     200             
+                     201             
+0185 22              202     RET
+                     203     
+0186                 204     CHUYENDOIBCDTHAPPHAN: ;ham chuyen doi gia tri BCD sang thap phan
+0186 EA              205     MOV             A, GIAY; dua gia tri giay vao chuan bi chuyen doi
+0187 C4              206     SWAP    A; swap 2 phan nible thap va cao thanh gi a
+0188 540F            207     ANL     A, #0FH; che 4 bit cao
+018A 75F00A          208     MOV     B, #0AH; gan thanh gi B gia tri 10
+018D A4              209     MUL     AB; nhan A voi B
+018E FF              210     MOV     R7, A;  dua ket qua vao thanh gi R7
+018F EA              211     MOV     A, GIAY; dua gia tri giay vao lan nua
+0190 540F            212     ANL             A, #0FH; che 4 bit cao
+0192 2F              213     ADD             A, R7; cong gia tri A voi R7
+0193 FA              214     MOV GIAY, A; tra ket qua sau chuyen doi vao thanh ghi giay 
+                     215     
+                     216     
+                     217     ; cac lenh benh duoi tuong tu cho Phut va gio
+0194 E9              218     MOV A,PHUT
+0195 C4              219     SWAP A
+0196 540F            220     ANL A,#0FH
+0198 75F00A          221     MOV B,#0AH
+019B A4              222     MUL AB
+019C FF              223     MOV R7,A
+019D E9              224     MOV A,PHUT
+019E 540F            225     ANL A,#0FH
+01A0 2F              226     ADD A,R7
+01A1 F9              227     MOV PHUT, A
+                     228     
+01A2 E8              229     MOV A,GIO
+01A3 C4              230     SWAP A
+01A4 540F            231     ANL A,#0FH
+01A6 75F00A          232     MOV B, #0AH
+01A9 A4              233     MUL AB
+01AA FF              234     MOV R7, A
+01AB E8              235     MOV A, GIO
+01AC 540F            236     ANL A,#0FH
+01AE 2F              237     ADD A, R7
+01AF F8              238     MOV GIO, A
+                     239     
+01B0 22              240     RET
+                     241     
+01B1                 242     CHUYENDOITHAPPHANBCD:
+01B1 E9              243     MOV A, PHUT
+01B2 75F00A          244     MOV B,#0AH; jake 0AH = 10D into B
+01B5 84              245     DIV AB
+01B6 C4              246     SWAP A
+01B7 540F            247     ANL A, #0FH
+01B9 25F0            248     ADD A, B
+01BB F9              249     MOV PHUT, A
+                     250     
+01BC E8              251     MOV A, GIO
+01BD 75F00A          252     MOV B,#0AH; Jake 0AH = 10D into B *
+01C0 84              253     DIV AB
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     5
+
+01C1 C4              254     SWAP A
+01C2 54F0            255     ANL A, #0F0H
+01C4 25F0            256     ADD A,B
+01C6 F8              257     MOV GIO,A
+                     258     
+01C7 22              259     RET
+                     260     
+                     261     
+01C8                 262     DS1307_INIT: ; ham khoi tao DS1307
+01C8 517C            263                     CALL I2C_START; goi ham I2C start
+01CA 74D0            264                     MOV A, #0D0H; dia chi DS1307
+01CC 12020E          265                     LCALL I2C_WRITE ; goi ham I2C write
+01CF 7400            266                     MOV A,#00H ;dia chi thanh ghi D
+01D1 12020E          267                     LCALL I2C_WRITE; goi ham I2C write
+01D4 7400            268                     MOV A, #00H ; ENABLE THE oscillator (CH bit = 0) cho phep DS1307 hoat dong
+01D6 12020E          269                     LCALL I2C_WRITE; goi ham I2C write
+01D9 518E            270                     CALL I2C_STOP; goi ham I2C stop
+01DB 22              271                     RET
+                     272                     
+01DC                 273     DS1307_WRITE_TIME: ; ham cap nhat thoi gian cho DS1307 cac lenh ben duoi tuong tu o tren
+01DC 517C            274                     CALL I2C_START; goi ham I2C start
+01DE 74D0            275                     MOV A, #0D0H; dia chi DS1307
+01E0 510E            276                     CALL I2C_WRITE ; goi ham I2C write
+01E2 7400            277                     MOV A,#00H ;dia chi thanh ghi D
+01E4 510E            278                     CALL I2C_WRITE; goi ham I2C write
+01E6 EA              279                     MOV A, GIAY;
+01E7 510E            280                     CALL I2C_WRITE
+01E9 E9              281                     MOV A, PHUT;
+01EA 510E            282                     CALL I2C_WRITE
+01EC E8              283                     MOV A, GIO;
+01ED 510E            284                     CALL I2C_WRITE
+01EF 518E            285                     CALL I2C_STOP
+01F1 22              286                     RET
+                     287                     
+01F2                 288     DS1307_READ_TIME: ; ham doc thoi gian
+01F2 517C            289                     CALL I2C_START; goi ham I2C start
+01F4 74D0            290                     MOV A,#0D0H ;dia chi DS1307 VA WRITE
+01F6 510E            291                     CALL I2C_WRITE ; goi ham I2C write
+01F8 7400            292                     MOV A, #00H ;dia chi thanh ghi 0
+01FA 510E            293                     CALL I2C_WRITE
+01FC 519A            294                     CALL I2C_RESTART; goi ham I2C restart
+01FE 7401            295                     MOV A,#001H ; DIA CHI DS1307 VA READ
+0200 510E            296                     CALL I2C_WRITE
+0202 5133            297                     CALL I2C_READ_ACK;  doc du lieu I2C
+0204 FA              298                     MOV GIAY, A;dua ket qua vao giay
+0205 5133            299                     CALL I2C_READ_ACK
+0207 F9              300                     MOV PHUT, A; dua ket qua vao phut
+0208 5155            301                     CALL I2C_READ_NACK
+020A F8              302                     MOV GIO, A; dua ket qua vao gio
+020B 518E            303                     CALL I2C_STOP
+020D 22              304                     RET
+                     305                     
+020E                 306     I2C_WRITE: ; ham ghi I2c
+020E C007            307                     PUSH 07H; luu trang thai hien tai vao 07H
+0210 7F08            308                     MOV R7, #8; gan gia tri R vao R7 *
+0212                 309                     __LOOP_I2C_WRITE:
+0212 C2B6            310                     CLR SCL; xoa chan SCL
+0214 33              311                     RLC A; xoay thanh ghi A
+0215 92B7            312                     MOV SDA, C; du bit ra chan SDA
+0217 00              313                     NOP; dung
+0218 00              314                     NOP; dung
+0219 D2B6            315                     SETB SCL; xoa chan SCL
+021B 00              316                     NOP
+021C 00              317                     NOP
+021D DFF3            318                     DJNZ R7,__LOOP_I2C_WRITE
+021F C2B6            319                     CLR SCL
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     6
+
+0221 00              320                     NOP 
+0222 00              321                     NOP
+0223 00              322                     NOP
+0224 00              323                     NOP
+0225 D2B7            324                     SETB SDA; CAU HINH NGO VAO SDA DOC ACK
+0227 D2B6            325                     SETB SCL
+0229 00              326                     NOP     
+022A A2B7            327                     MOV C, SDA      ; KIEM TRA CO "C" DE XAC DINH LOI
+022C 00              328                     NOP
+022D 00              329                     NOP
+022E C2B6            330                     CLR SCL
+0230 D007            331                     POP 07H; lay lai gia tri trang thai hien tai
+0232 22              332                     RET
+                     333                     
+                     334                     
+0233                 335     I2C_READ_ACK: ; ham doc I2C co ACK cac lenh ben duoi tuong tu o tren
+0233 C007            336                     PUSH 07H
+0235 7F08            337                     MOV R7,#8
+0237 D2B7            338                     SETB SDA                        ;CAU HINH NGO VAO SDA
+0239                 339                     __LOOP_I2C_READ_ACK:
+0239 D2B6            340                     SETB SCL
+023B 00              341                     NOP
+023C A2B7            342                     MOV             C,SDA
+023E 33              343                     RLC             A                       ;BYTE DOC VE LUU TRONG THANH GHI "A"
+023F 00              344                     NOP
+0240 C2B6            345                     CLR SCL
+0242 00              346                     NOP 
+0243 00              347                     NOP
+0244 00              348                     NOP
+0245 DFF2            349                     DJNZ    R7,__LOOP_I2C_READ_ACK
+0247 C2B7            350                     CLR SDA
+0249 00              351                     NOP
+024A D2B6            352                     SETB SCL
+024C 00              353                     NOP
+024D 00              354                     NOP
+024E 00              355                     NOP
+024F 00              356                     NOP
+0250 C2B6            357                     CLR SCL
+0252 D007            358                     POP 07H
+0254 22              359                     RET
+                     360                     
+0255                 361     I2C_READ_NACK: ;ham doc I2C co ACK cac lenh tuong tu o tren
+0255 C007            362                     PUSH 07H
+0257 7F08            363                     MOV R7, #8
+0259 D2B7            364                     SETB SDA                ;CAU HINH NGO VAO SDA
+025B                 365                     __LOOP_I2C_READ_NACK:
+025B D2B6            366                     SETB SCL
+025D 00              367                     NOP
+025E A2B7            368                     MOV C,SDA
+0260 33              369                     RLC A; BYTE DOC VE LUU TRONG THANH GHI "A"
+0261 00              370                     NOP
+0262 C2B6            371                     CLR SCL
+0264 00              372                     NOP 
+0265 00              373                     NOP
+0266 00              374                     NOP
+0267 DFF2            375                     DJNZ    R7,__LOOP_I2C_READ_NACK
+0269 C2B7            376                     CLR SDA
+026B 00              377                     NOP
+026C D2B6            378                     SETB SCL
+026E 00              379                     NOP
+026F 00              380                     NOP
+0270 00              381                     NOP
+0271 00              382                     NOP
+0272 C2B6            383                     CLR SCL
+0274 D007            384                     POP 07H
+0276 22              385                     RET
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     7
+
+                     386                     
+0277                 387     I2C_INIT: ; ham khoi tao I2C
+                     388     
+0277 D2B6            389                     SETB SCL
+0279 D2B7            390                     SETB SDA
+027B 22              391                     RET
+                     392                     
+027C                 393     I2C_START: ; ham start I2C
+027C D2B7            394                     SETB SDA
+027E D2B6            395                     SETB SCL
+0280 00              396                     NOP             ;DELAY 4.7US
+0281 00              397                     NOP                     ;Bus Free Time Between a STOP and START condition
+0282 00              398                     NOP
+0283 00              399                     NOP
+0284 00              400                     NOP
+0285 C2B7            401                     CLR SDA
+0287 00              402                     NOP             ;DELAY 4US
+0288 00              403                     NOP             ;Hold Time(Repcated) START Condition
+0289 00              404                     NOP
+028A 00              405                     NOP
+028B C2B6            406                     CLR SCL
+028D 22              407                     RET
+028E                 408     I2C_STOP: ;ham stop I2C
+028E C2B7            409                     CLR SDA
+0290 D2B6            410                     SETB SCL
+0292 00              411                     NOP     ;DELAY 4.7US
+0293 00              412                     NOP             ;Setup Time for STOP Condition
+0294 00              413                     NOP
+0295 00              414                     NOP
+0296 00              415                     NOP
+0297 D2B7            416                     SETB SDA
+0299 22              417                     RET
+029A                 418     I2C_RESTART: ; ham star I2C
+029A D2B7            419                     SETB SDA
+029C D2B6            420                     SETB SCL
+029E 00              421                     NOP             ;DELAY 4.7US
+029F 00              422                     NOP                     ;Setup Time for a Repeated START Condition
+02A0 00              423                     NOP
+02A1 00              424                     NOP
+02A2 00              425                     NOP
+02A3 C2B7            426                     CLR SDA
+02A5 00              427                     NOP                     ;DELAY 4US
+02A6 00              428                     NOP                     ;Hold Time (Repeated) START Condition
+02A7 00              429                     NOP
+02A8 00              430                     NOP
+02A9 C2B6            431                     CLR SCL
+02AB 00              432                     NOP
+02AC 00              433                     NOP
+02AD 22              434                     RET
+                     435                     
+02AE                 436     SCL_HIGH: ;ham dau cham SCL len cao
+02AE 00              437                     NOP             ;DELAY 4US
+02AF 00              438                     NOP                     ;high Period of SCL Clock
+02B0 D2B6            439                     SETB SCL
+02B2 00              440                     NOP 
+02B3 00              441                     NOP
+02B4 22              442                     RET
+02B5                 443     SCL_LOW: ; ham dua chan SCL xuong thap
+02B5 00              444                     NOP                     ;DELAY 4.7US
+02B6 00              445                     NOP             ;LOW Period of SCL Clock
+02B7 C2B6            446                     CLR SCL
+02B9 00              447                     NOP
+02BA 00              448                     NOP
+02BB 00              449                     NOP
+02BC 22              450                     RET
+                     451                     
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     8
+
+02BD                 452     DELAY: ; chuong trinh delay
+02BD 7D0A            453                     MOV R5, #10
+02BF 7E64            454     WAIT2:  MOV R6, #100
+02C1 DEFE            455                                     DJNZ R6, $
+02C3 DDFA            456                                     DJNZ R5, WAIT2
+02C5 22              457     RET
+                     458     
+                     459     
+                     460     
+                     461     
+02C6 C0F9A4B0        462     MALED:  DB  0C0H,0F9H,0A4H,0B0H,099H,092H,082H,0F8H,080H,090H,0BFH
+02CA 999282F8                
+02CE 8090BF                  
+                     463             
+                     464     END
+A51 MACRO ASSEMBLER  MAIN                                                                 04/23/2023 10:51:46 PAGE     9
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E               T Y P E  V A L U E   ATTRIBUTES
+
+B. . . . . . . . . .  D ADDR   00F0H   A   
+CHINHPHUT. . . . . .  C ADDR   009CH   A   
+CHUC . . . . . . . .  N NUMB   0030H   A   
+CHUYENDOIBCDTHAPPHAN  C ADDR   0186H   A   
+CHUYENDOITHAPPHANBCD  C ADDR   01B1H   A   
+DELAY. . . . . . . .  C ADDR   02BDH   A   
+DEMTHOIGIAN. . . . .  C ADDR   00D5H   A   
+DONVI. . . . . . . .  N NUMB   0031H   A   
+DS1307_INIT. . . . .  C ADDR   01C8H   A   
+DS1307_READ_TIME . .  C ADDR   01F2H   A   
+DS1307_WRITE_TIME. .  C ADDR   01DCH   A   
+DUNGDEM. . . . . . .  C ADDR   008FH   A   
+EA . . . . . . . . .  B ADDR   00A8H.7 A   
+ET0. . . . . . . . .  B ADDR   00A8H.1 A   
+ET1. . . . . . . . .  B ADDR   00A8H.3 A   
+GIAY . . . . . . . .    REG    R2          
+GIO. . . . . . . . .    REG    R0          
+HTCHINHGIO . . . . .  N NUMB   0032H   A   
+HTCHINHPHUT. . . . .  N NUMB   0033H   A   
+I2C_INIT . . . . . .  C ADDR   0277H   A   
+I2C_READ_ACK . . . .  C ADDR   0233H   A   
+I2C_READ_NACK. . . .  C ADDR   0255H   A   
+I2C_RESTART. . . . .  C ADDR   029AH   A   
+I2C_START. . . . . .  C ADDR   027CH   A   
+I2C_STOP . . . . . .  C ADDR   028EH   A   
+I2C_WRITE. . . . . .  C ADDR   020EH   A   
+KTGIAM . . . . . . .  C ADDR   00BAH   A   
+KTMODE . . . . . . .  C ADDR   0082H   A   
+KTPHUT1. . . . . . .  C ADDR   00B1H   A   
+KTPHUT2. . . . . . .  C ADDR   00C9H   A   
+KTTANG . . . . . . .  C ADDR   00A2H   A   
+LAP. . . . . . . . .  C ADDR   0072H   A   
+MAIN . . . . . . . .  C ADDR   0040H   A   
+MALED. . . . . . . .  C ADDR   02C6H   A   
+MODE . . . . . . . .    REG    R3          
+P0 . . . . . . . . .  D ADDR   0080H   A   
+P1 . . . . . . . . .  D ADDR   0090H   A   
+P2 . . . . . . . . .  D ADDR   00A0H   A   
+P3 . . . . . . . . .  D ADDR   00B0H   A   
+PHUT . . . . . . . .    REG    R1          
+QUETLED. . . . . . .  C ADDR   00E2H   A   
+SCL. . . . . . . . .  B ADDR   00B0H.6 A   
+SCL_HIGH . . . . . .  C ADDR   02AEH   A   
+SCL_LOW. . . . . . .  C ADDR   02B5H   A   
+SDA. . . . . . . . .  B ADDR   00B0H.7 A   
+TF0. . . . . . . . .  B ADDR   0088H.5 A   
+TF1. . . . . . . . .  B ADDR   0088H.7 A   
+TH0. . . . . . . . .  D ADDR   008CH   A   
+TH1. . . . . . . . .  D ADDR   008DH   A   
+TL0. . . . . . . . .  D ADDR   008AH   A   
+TL1. . . . . . . . .  D ADDR   008BH   A   
+TMOD . . . . . . . .  D ADDR   0089H   A   
+TR0. . . . . . . . .  B ADDR   0088H.4 A   
+TR1. . . . . . . . .  B ADDR   0088H.6 A   
+WAIT2. . . . . . . .  C ADDR   02BFH   A   
+__LOOP_I2C_READ_ACK.  C ADDR   0239H   A   
+__LOOP_I2C_READ_NACK  C ADDR   025BH   A   
+__LOOP_I2C_WRITE . .  C ADDR   0212H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)
